@@ -39,6 +39,7 @@ disp('a) A + B');
 C = A + B
 
 disp('b) A * B');
+C = A * B
 
 disp('c) A²');
 C = A^2
