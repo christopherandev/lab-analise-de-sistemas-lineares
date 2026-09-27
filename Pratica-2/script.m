@@ -1,5 +1,7 @@
 clc; close all; clear;
 
+pkg load control;
+
 GENERATE_GRAPHS = true;
 
 function exportgraph(filename, generate)
@@ -12,17 +14,7 @@ function exportgraph(filename, generate)
     set(gcf, 'PaperSize', [12.8, 7.2]);
     set(gcf, 'PaperPosition', [0, 0, 12.8, 7.2]);
 
-    print(gcf, fullfile(pwd, filename), '-dpng', '-r600');
-end
-
-function formatPlot(plotTitle, letter, y, t0, u, t)
-  hold on;
-  plot(t0, y, 'Color', 'b', 'Linewidth', 2.15);
-  xlabel('Tempo (s)');
-  ylabel('Amplitude');
-  plot(t, u, '--', 'Color', 'r', 'Linewidth', 2.15);
-  title(plotTitle);
-  legend('Resposta do sistema', 'Entrada');
+    print(gcf, fullfile(pwd, filename), '-dpng', '-r400');
 end
 
 % Questão 2
@@ -32,8 +24,8 @@ u = ones(k);
 R = 470e3;
 C = 1e-6;
 B = (R*C)/10;
-y(1) = 0;
 
+y(1) = 0;
 for i = 2 : k
     y(i) = (1 - B) * y(i - 1) + B * u(i - 1);
 end
@@ -41,196 +33,121 @@ end
 figure('NumberTitle', 'off', 'Name', 'Questão 2', 'Position', [171, 117, 1025, 576]);
 plot(y, '*', 'MarkerSize', 10, 'Color', 'blue');
 stem(y, 'filled', 'Linewidth', 1.5);
+title('Simulação da Equação Diferença');
+xlabel('Tempo (s)');
+ylabel('Amplitude');
 
 exportgraph('graph-2', GENERATE_GRAPHS);
 
-% Quetão 3a
+% Questão 3a
+
+function temporal_response(t, sys, sys_name, letter, can_generate)
+
+  impulse   = @(t, k = 0) (t == k);
+  ustep     = @(t) (ones(size(t)));
+  ramp      = @(t) (t .* ones(size(t)));
+  parabolic = @(t) (t .^2 .* ones(size(t)));
+
+  figure('NumberTitle', 'off', 'Name', sprintf('Questão 3.%s - Respostas', letter), 'Position', [171, 117, 1025, 576]);
+
+  subplot(2, 2, 1);
+  [y, t0] = lsim(sys, impulse(t), t);
+  hold on;
+  plot(t0, y, 'Color', 'b', 'Linewidth', 2.15);
+  xlabel('Tempo (s)');
+  ylabel('Amplitude');
+  plot(t, impulse(t), '--', 'Color', 'r', 'Linewidth', 2.15);
+  title(sprintf('Resposta ao impulso: %s', sys_name));
+  legend('Resposta do sistema', 'Entrada');
+  hold off;
+
+  subplot(2, 2, 2);
+  [y, t0] = lsim(sys, ustep(t), t);
+  hold on;
+  plot(t0, y, 'Color', 'b', 'Linewidth', 2.15);
+  xlabel('Tempo (s)');
+  ylabel('Amplitude');
+  plot(t, ustep(t), '--', 'Color', 'r', 'Linewidth', 2.15);
+  title(sprintf('Resposta ao degrau: %s', sys_name));
+  legend('Resposta do sistema', 'Entrada');
+
+  subplot(2, 2, 3);
+  [y, t0] = lsim(sys, ramp(t), t);
+  hold on;
+  plot(t0, y, 'Color', 'b', 'Linewidth', 2.15);
+  xlabel('Tempo (s)');
+  ylabel('Amplitude');
+  plot(t, ramp(t), '--', 'Color', 'r', 'Linewidth', 2.15);
+  title(sprintf('Resposta à rampa: %s', sys_name));
+  legend('Resposta do sistema', 'Entrada');
+
+  subplot(2, 2, 4);
+  [y, t0] = lsim(sys, parabolic(t), t);
+  hold on;
+  plot(t0, y, 'Color', 'b', 'Linewidth', 2.15);
+  xlabel('Tempo (s)');
+  ylabel('Amplitude');
+  plot(t, parabolic(t), '--', 'Color', 'r', 'Linewidth', 2.15);
+  title(sprintf('Resposta à parábola: %s', sys_name));
+  legend('Resposta do sistema', 'Entrada');
+
+  exportgraph(sprintf('graph-3-%s-responses', letter), can_generate);
+
+  figure('NumberTitle', 'off', 'Name', sprintf('Questão 3.%s - pzmap', letter), 'Position', [171, 117, 1025, 576]);
+  [pole, zero] = pzmap(sys);
+
+  hold on;
+  h_pole = plot(real(pole), imag(pole), 'x', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [1 0.2 0.6]);
+
+  if ~isempty(zero)
+      h_zero = plot(real(zero), imag(zero), 'o', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.4 0.2 0.4]);
+      legend('Polos', 'Zeros');
+  else
+      legend('Polos');
+  end
+  hold off;
+
+  grid on;
+  title(sprintf('Polos e Zeros do sistema %s', sys_name));
+  xlabel('Eixo Real');
+  ylabel('Eixo Imaginário');
+
+  exportgraph(sprintf('graph-3-%s-pzmap', letter), can_generate);
+end
 
 t = 0:0.1:60;
-
-impulse   = @(t, k = 0) (t == k);
-ustep     = @(t) (ones(size(t)));
-ramp      = @(t) (t .* ones(size(t)));
-parabolic = @(t) (t .^2 .* ones(size(t)));
 
 sys = tf([1], [3, 1]);
 
-figure('NumberTitle', 'off', 'Name', 'Questão 3a - Resposta Temporal', 'Position', [171, 117, 1025, 576]);
+temporal_response(t, sys, '1 / (3s + 1)', 'a', GENERATE_GRAPHS);
 
-subplot(2, 2, 1);
-[y, t0] = lsim(sys, impulse(t), t);
-formatPlot('Resposta ao Impulso', 'a', y, t0, impulse(t), t);
-
-subplot(2, 2, 2);
-[y, t0] = lsim(sys, ustep(t), t);
-formatPlot('Resposta ao Degrau', 'a', y, t0, ustep(t), t);
-
-subplot(2, 2, 3);
-[y, t0] = lsim(sys, ramp(t), t);
-formatPlot('Resposta à Rampa', 'a', y, t0, ramp(t), t);
-
-subplot(2, 2, 4);
-[y, t0] = lsim(sys, parabolic(t), t);
-formatPlot('Resposta à Parábola', 'a', y, t0, parabolic(t), t);
-
-exportgraph('graph-3a-1', GENERATE_GRAPHS);
-
-figure('NumberTitle', 'off', 'Name', 'Questão 3a - pzmap', 'Position', [171, 117, 1025, 576]);
-
-[pole, zero] = pzmap(sys);
-
-hold on;
-h_pole = plot(real(pole), imag(pole), 'x', 'MarkerSize', 12, 'LineWidth', 2, 'Color', '#ff3399');
-
-if ~isempty(zero)
-    h_zero = plot(real(zero), imag(zero), 'o', 'MarkerSize', 12, 'LineWidth', 2, 'Color', '#663366');
-    legend('Polos', 'Zeros');
-    disp(sprintf('Polo: %.2f | Zero: %.2f', pole, zero));
-
-else
-    legend('Polos');
-    disp(sprintf('Polo: %.2f | Zero: -/-', pole));
-
-end
-
-hold off;
-
-grid on;
-title('Diagrama de Polos e Zeros');
-xlabel('Eixo Real');
-ylabel('Eixo Imaginário');
-
-exportgraph('graph-3a-2', GENERATE_GRAPHS);
-
-% Quetão 3b - pade
-
-t = 0:0.1:60;
-
-impulse   = @(t, k = 0) (t == k);
-ustep     = @(t) (ones(size(t)));
-ramp      = @(t) (t .* ones(size(t)));
-parabolic = @(t) (t .^2 .* ones(size(t)));
+% Questão 3b - pade
 
 [num, den] = padecoef(5, 1);
 
 delay_sys = tf(num, den);
 
-base_sys = tf([1], [1, 3]);
+base_sys = tf([1], [3, 1]);
 
 sys = delay_sys * base_sys;
 
-figure('NumberTitle', 'off', 'Name', 'Questão 3b - Resposta Temporal', 'Position', [171, 117, 1025, 576]);
+temporal_response(t, sys, '1 / (3s + 1) * e^{-5s}', 'b', GENERATE_GRAPHS);
 
-subplot(2, 2, 1);
-[y, t0] = lsim(sys, impulse(t), t);
-formatPlot('Resposta ao Impulso', 'a', y, t0, impulse(t), t);
-
-subplot(2, 2, 2);
-[y, t0] = lsim(sys, ustep(t), t);
-formatPlot('Resposta ao Degrau', 'a', y, t0, ustep(t), t);
-
-subplot(2, 2, 3);
-[y, t0] = lsim(sys, ramp(t), t);
-formatPlot('Resposta à Rampa', 'a', y, t0, ramp(t), t);
-
-subplot(2, 2, 4);
-[y, t0] = lsim(sys, parabolic(t), t);
-formatPlot('Resposta à Parábola', 'a', y, t0, parabolic(t), t);
-
-exportgraph('graph-3b-1', GENERATE_GRAPHS);
-
-figure('NumberTitle', 'off', 'Name', 'Questão 3b - pzmap', 'Position', [171, 117, 1025, 576]);
-
-[pole, zero] = pzmap(sys);
-
-hold on;
-h_pole = plot(real(pole), imag(pole), 'x', 'MarkerSize', 12, 'LineWidth', 2, 'Color', '#ff3399');
-
-if ~isempty(zero)
-    h_zero = plot(real(zero), imag(zero), 'o', 'MarkerSize', 12, 'LineWidth', 2, 'Color', '#663366');
-    legend('Polos', 'Zeros');
-    disp(sprintf('Polo: %.2f | Zero: %.2f', pole, zero));
-
-else
-    legend('Polos');
-    disp(sprintf('Polo: %.2f | Zero: -/-', pole));
-
-end
-
-hold off;
-
-grid on;
-title('Diagrama de Polos e Zeros');
-xlabel('Eixo Real');
-ylabel('Eixo Imaginário');
-
-exportgraph('graph-3b-2', GENERATE_GRAPHS);
-
-% Quetão 3c
-
-t = 0:0.1:60;
+% Questão 3c
 
 wn = 1;
-zetas = [ 0.35, 0.7, 1.35]
-
-impulse   = @(t, k = 0) (t == k);
-ustep     = @(t) (ones(size(t)));
-ramp      = @(t) (t .* ones(size(t)));
-parabolic = @(t) (t .^2 .* ones(size(t)));
+zetas = [0.35, 0.7, 1.35];
 
 for i = 1:length(zetas)
 
   sys = tf([wn^2], [1, 2 * zetas(i) * wn, wn^2]);
 
-  figure('NumberTitle', 'off', 'Name', sprintf('Questão 3c - Resposta Temporal para zeta = %.2f', zetas(i)), 'Position', [171, 117, 1025, 576]);
+  sub_letter = sprintf('c-%d', i);
 
-  subplot(2, 2, 1);
-  [y, t0] = lsim(sys, impulse(t), t);
-  formatPlot('Resposta ao Impulso', 'a', y, t0, impulse(t), t);
+  name = sprintf('1 / (s^2 + %.2fs + 1)', 2 * zetas(i) * wn);
 
-  subplot(2, 2, 2);
-  [y, t0] = lsim(sys, ustep(t), t);
-  formatPlot('Resposta ao Degrau', 'a', y, t0, ustep(t), t);
-
-  subplot(2, 2, 3);
-  [y, t0] = lsim(sys, ramp(t), t);
-  formatPlot('Resposta à Rampa', 'a', y, t0, ramp(t), t);
-
-  subplot(2, 2, 4);
-  [y, t0] = lsim(sys, parabolic(t), t);
-  formatPlot('Resposta à Parábola', 'a', y, t0, parabolic(t), t);
-
-  exportgraph(sprintf("graph-3c-1-%d", i), GENERATE_GRAPHS);
-
-  figure('NumberTitle', 'off', 'Name', sprintf('Questão 3c - pzmap para zeta = %.2f', zetas(i)), 'Position', [171, 117, 1025, 576]);
-
-  [pole, zero] = pzmap(sys);
-
-  hold on;
-  h_pole = plot(real(pole), imag(pole), 'x', 'MarkerSize', 12, 'LineWidth', 2, 'Color', '#ff3399');
-
-  if ~isempty(zero)
-      h_zero = plot(real(zero), imag(zero), 'o', 'MarkerSize', 12, 'LineWidth', 2, 'Color', '#663366');
-      legend('Polos', 'Zeros');
-      disp(sprintf('Polo: %.2f | Zero: %.2f', pole, zero));
-
-  else
-      legend('Polos');
-      disp(sprintf('Polo: %.2f | Zero: -/-', pole));
-
-  end
-
-  hold off;
-
-  grid on;
-  title('Diagrama de Polos e Zeros');
-  xlabel('Eixo Real');
-  ylabel('Eixo Imaginário');
-
-  exportgraph(sprintf("graph-3c-2-%d", i), GENERATE_GRAPHS);
-
+  temporal_response(t, sys, name, sub_letter, GENERATE_GRAPHS);
 end
-
 
 % Quetão 4
 
@@ -240,12 +157,14 @@ sys = tf(num, den);
 
 t = 0:0.01:6;
 
+% Quetão 4a e b
+
 [y, t_out] = step(sys, t);
 
 y_analitic = dcgain(sys);
 fprintf('Valor Final Analítico (Questão 4a): %.4f (1/8 = 0.125)\n', y_analitic);
 
-figure('NumberTitle', 'off', 'Name', 'Questao 4a - Resposta ao Degrau');
+figure('NumberTitle', 'off', 'Name', 'Questao 4a - Resposta ao Degrau', 'Position', [171, 117, 1025, 576]);
 hold on;
 
 plot(t_out, y, 'b-', 'LineWidth', 2, 'DisplayName', 'Resposta y(t)');
@@ -260,7 +179,42 @@ ylabel('Amplitude');
 legend('location', 'southeast');
 hold off;
 
-exportgraph('graph-4', GENERATE_GRAPHS);
+exportgraph('graph-4a', GENERATE_GRAPHS);
+
+% Questão 4c
+
+poles = 1:1:8;
+
+legend_names = cell(1, length(poles));
+colors = {'#ff0000', '#00ff00', '#0000ff', '#ffff00', '#00ffff', '#ff00ff', '#ff9955', '#55ff99'};
+figure('NumberTitle', 'off', 'Name', 'Questao 4c - Resposta ao Degrau com Multiplos Polos', 'Position', [171, 117, 1025, 576]);
+hold on;
+
+for i = 1:length(poles)
+  num = 1;
+  den = 1;
+
+  for j = 1:poles(i)
+    den = conv([1 1], den);
+  end
+
+  legend_names{i} = sprintf('Polo de ordem %d', poles(i));
+
+  sys = tf(num, den);
+  [y, t_out] = step(sys, t);
+
+  plot(t_out, y, 'LineWidth', 2, 'Color', colors{i});
+end
+
+grid on;
+title('Questão 4c: Resposta ao Degrau para G(s) com polos variando de 1 a 8');
+xlabel('Tempo (s)');
+ylabel('Amplitude');
+
+legend(legend_names, 'location', 'southeast');
+hold off;
+
+exportgraph('graph-4c', GENERATE_GRAPHS);
 
 % Quetão 5:
 
@@ -272,7 +226,7 @@ p3_val = [0.5, 1, 2, 10];
 
 t = 0:0.01:6;
 
-figure('NumberTitle', 'off', 'Name', 'Questao 5 - Efeito do Terceiro Polo');
+figure('NumberTitle', 'off', 'Name', 'Questao 5 - Efeito do Terceiro Polo', 'Position', [171, 117, 1025, 576]);
 hold on;
 
 [y_orig, t_orig] = step(sys, t);
@@ -298,3 +252,4 @@ legend('location', 'southeast');
 hold off;
 
 exportgraph('graph-5', GENERATE_GRAPHS);
+
